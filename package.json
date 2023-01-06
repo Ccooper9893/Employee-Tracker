@@ -1,0 +1,24 @@
+{
+  "name": "employee-tracker",
+  "version": "1.0.0",
+  "description": "A command line application Content Management System (CMS).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ccooper9893/Employee-Tracker.git"
+  },
+  "author": "Cody Cooper",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Ccooper9893/Employee-Tracker/issues"
+  },
+  "homepage": "https://github.com/Ccooper9893/Employee-Tracker#readme",
+  "dependencies": {
+    "console.table": "^0.10.0",
+    "inquirer": "^8.2.4",
+    "mysql2": "^2.3.3"
+  }
+}
