@@ -32,7 +32,7 @@ VALUES ('userInput');
 
 -- Insert a new role
 -- Asks user name of new role, salary, and what department
-
+INSERT INTO role (title, salary, department.id)
 -- Insert new employee
 -- Asks user name of new employee, first and last, role, and manager
 
