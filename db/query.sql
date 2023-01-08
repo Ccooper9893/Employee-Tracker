@@ -31,10 +31,13 @@ INSERT INTO department (name)
 VALUES ('userInput');
 
 -- Insert a new role
+-- Asks user name of new role, salary, and what department
 
 -- Insert new employee
+-- Asks user name of new employee, first and last, role, and manager
 
 -- Update employee role
+-- Asks which employee they want to update and asks which role you would like to change
 
 
 
