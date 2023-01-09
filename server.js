@@ -1,49 +1,52 @@
 const mysql = require('mysql2'); //Imports mysql2 library so we can interact with the mySQL databases;
-const inquirer = require('inquirer'); //Imports inquirer library so we can use CLI
+const inquirer = require('inquirer');
 const cTable = require('console.table');//Use console.table similiar to console.log. Makes it beautiful!
-// const dbUtil = require('./util/dbquery.js'); //Imports database query functions
 
-//Connects to mySQL database
+// Connect to the database
 const db = mysql.createConnection(
-    {
-        host: 'localhost',
-        user: 'root', //MySQL username
-        password: 'WhirlwindEngine9893!?', //MySQL password
-        database: 'company_db' //MySQL database name
-    },
-    console.log('You have connected to the company_db database.')
-);
-async function main() {
-    // create the connection
-    const connection = await mysql.createConnection({
-        host: 'localhost',
-        user: 'root', //MySQL username
-        password: 'WhirlwindEngine9893!?', //MySQL password
-        database: 'company_db' //MySQL database name
-    });
-    // query database
-    const [rows, fields] = await connection.startmenu();
-  };
-/*      Bonus
-    - Update Employee Managers
-    - View Employees By Manager
-    - View Employees By Department
-    - Delete Departments, Roles, and Employees
-    - View Total Utilized Budget of a Department (Combined salaries of all employees in specific department)
-*/
-function startMenu() {
-inquirer.prompt([
+      {
+          host: 'localhost',
+          user: 'root', //MySQL username
+          password: 'WhirlwindEngine9893!?', //MySQL password
+          database: 'company_db' //MySQL database name
+      },
+      console.log('You have connected to the company_db database.')
+      // Add functions for inquirer questions
+  );
+
+  // Array of CMS options
+  const selectionArr = ['View All Employees', 'Add Employee', 'Update Employee Role', 'View All Roles', 'Add Role', 'View All Departments', 'Add Department']
+
+  inquirer.prompt([
     {
         type: 'list',
-        name: 'selection',
+        name: 'command',
         message: 'What would you like to do?',
-        choices: ['View All Employees', 'Add Employee', 'Update Employee Role', 'View All Roles', 'Add Role', 'View All Departments', 'Add Department']
+        choices: selectionArr
         
     }
-]).then(answer => {
-    switch(answer.selection) {
+  ]).then((results) => {
+    switch(results.command) {
         case 'View All Employees':
           // code block
+          db.query(`SELECT 
+          e1.id, 
+          e1.first_name, 
+          e1.last_name,
+          role.title,
+          department.name AS department,
+          role.salary,
+          e2.first_name AS manager
+      FROM employee AS e1
+      LEFT JOIN role ON e1.role_id = role.id
+      LEFT JOIN employee AS e2 ON e1.manager_id = e2.id
+      LEFT JOIN department ON role.department_id = department.id;`, (err, result) => {
+        if (err) {
+          console.log(err)
+        }
+        console.table(result[0]);
+        mainMenu();
+      })
           break;
         case 'Add Employee':
           // code block
@@ -72,5 +75,15 @@ inquirer.prompt([
 })
 .catch((err) => {
     console.log(`There has been an error`, err)
-})
-};
+});
+  /*      Bonus
+    - Update Employee Managers
+    - View Employees By Manager
+    - View Employees By Department
+    - Delete Departments, Roles, and Employees
+    - View Total Utilized Budget of a Department (Combined salaries of all employees in specific department)
+*/
+
+
+
+
