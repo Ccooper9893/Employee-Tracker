@@ -7,12 +7,12 @@ const Department = require('./lib/department');
 const Employee = require('./lib/employee');
 const Role = require('./lib/role');
 
-//Creating empty arrays to store row objects to display in inquirer prompts
 let departments = [];
 let employees = [];
 let roles = [];
 
 //Connect to the MySQL database
+
 const db = mysql.createConnection(
       {
           host: 'localhost',
@@ -32,15 +32,18 @@ db.promise().query('SELECT * FROM employee;')
         }
       })
       .catch((err) => {console.log('There has been an query error', err)});
+    
 
 db.promise().query('SELECT * FROM role;')
     .then(([rows, fields]) => {
         for (role of rows) {
-            let newRole = new Role(role.title, role.salary, role.department_id)
+            let newRole = new Role(role.id, role.title, role.salary, role.department_id)
             roles.push(newRole)
         }
     })
     .catch((err) => {console.log('There has been an query error', err)});    
+
+
 
 db.promise().query('SELECT * FROM department;')
     .then(([rows, fields]) => {
@@ -50,6 +53,7 @@ db.promise().query('SELECT * FROM department;')
         }
     })
     .catch((err) => {console.log('There has been an query error', err)});
+
 
 // Array of CMS options
 const selectionArr = [
@@ -63,7 +67,9 @@ const selectionArr = [
     'Quit'
 ];
 
+//Questions for add Employee option
 function start() {
+    //Creating empty arrays to store row objects to display in inquirer prompts
     inquirer.prompt(
         {
             type: 'list',
@@ -76,9 +82,17 @@ function start() {
         switch(data.input) {
             case 'View All Employees': viewAllEmployees();
             break;
-            case 'View All Departments': viewAllDepartments();
+            case 'Add Employee': addEmployee();
+            break;
+            case 'Update Employee Role': updateEmployee();
             break;
             case 'View All Roles': viewAllRoles();
+            break;
+            case 'Add Role' : addRole();
+            break;
+            case 'View All Departments': viewAllDepartments();
+            break;
+            case 'Add Department': addDepartment();
             break;
             case 'Quit': db.end();
             break;
@@ -86,6 +100,12 @@ function start() {
     })
     .catch((err) => {console.log('There has been an inquirer error.', err)});
 }
+
+
+
+
+/*-----------------------CLI Selection functions ---------------------------*/
+//Prompts and adds a new employee based on user input/selection
 
 function viewAllEmployees() {
     db.promise().query(
@@ -133,6 +153,138 @@ function viewAllRoles() {
     .catch((err) => {console.log('There has been an query error', err)})
 }
 
+function addEmployee() {
+    inquirer.prompt(addEmployeeQuestions)
+    .then((data) => {
+
+        let mId;
+        //Grabs the manager id of the selected manager
+        if (data.empManager == 'None') {
+            mId = null
+        } else {
+            mId = employees[employees.map(e => e.first_name).indexOf(data.empManager)].id;
+        }
+
+        //Grabs the role id of the selected position
+        let rId = roles[roles.map(e => e.title).indexOf(data.empRole)].id;
+        
+        db.promise().query(`INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)`, [data.empFirstName, data.empLastName, rId, mId])
+        .then((data) => {
+            console.log(`\nThe employee has been added to the company database.`)
+            // let newEmp = new Employee(emp.id, emp.first_name, emp.last_name, emp.role_id, emp.manager_id)
+            // employees.push(newEmp);
+            
+            })
+        .catch(err => console.log(err));
+        db.promise().query(`SELECT id FROM employee WHERE first_name = ?`, [data.empFirstName])
+        .then(([rows, fields]) => {
+            let newEmp = new Employee(rows.id, data.empFirstName, data.empLastName, rId, mId)
+            employees.push(newEmp);
+        })
+        start()
+    })
+    .catch((err) => {console.log('There has been an query error', err)})
+};
+
+function updateEmployee() {
+    inquirer.prompt(updateRoleQuestions)
+    .then(data => {
+        let rId = roles[roles.map(index => index.title).indexOf(data.roleChoice)].id
+        let empIndex = employees.map(index => index.first_name).indexOf(data.empChoice);
+        employees[empIndex].role_id = rId;
+        db.promise().query(`UPDATE employee SET role_id = ? WHERE first_name = ?`, [rId, data.empChoice])
+        .then(data => console.log(`\nRole has been updated.`))
+        .catch(err => console.log(err))
+        start()
+    })
+    .catch(err => console.log(err))
+    
+};
+
+function addDepartment() {
+    inquirer.prompt(addDepartmentQ)
+    .then((data) => {
+        db.promise().query(`INSERT INTO department VALUES ?`, [data.newDep])
+        .then(data => console.log('\nDepartment has been added.'))
+        .catch(err => console.log('There has been an query error', err))
+
+    })
+    .catch(err => console.log('There has been an error!', err))
+}
+
+/*----------------------Inquirer Questions-----------------------*/ 
+const addEmployeeQuestions = [
+    {
+        type: 'input',
+        name: 'empFirstName',
+        message: 'What is the employee\'s first name?',
+        validate: userInput => {
+            return userInput ? true : console.log('Please enter a valid name.')
+        }
+    },
+    {
+        type: 'input',
+        name: 'empLastName',
+        message: 'What is the employee\'s last name?',
+        validate: userInput => {
+            return userInput ? true : console.log('Please enter a valid name.')
+        }
+    },
+    {
+        type: 'list',
+        name: 'empRole',
+        message: 'What is the employee\'s role?',
+        choices: () => {
+            return roles.map(index => index.title);
+        }
+    },
+    {
+        type: 'list',
+        name: 'empManager',
+        message: 'Who is the employee\'s manager?',
+        choices: () => {
+            let mgs = ['None']
+            for (emp of employees) {
+                if (emp.manager_id === null) {
+                    mgs.push(emp.first_name)
+                }
+            }
+            return mgs
+        }
+    }
+];
+
+const updateRoleQuestions = [
+    {
+    type: 'list',
+    name: 'empChoice',
+    message: 'Which employee would you like to update?',
+    choices: () => {
+        return employees.map(index => index.first_name); 
+        }
+    },
+    {
+        type: 'list',
+        name: 'roleChoice',
+        choices: () => {
+            return roles.map(index => index.title)
+        }
+    }
+]
+
+const addDepartmentQ = [
+    {
+        type: 'input',
+        name: 'newDep',
+        message: 'Please enter the department you would like to add.',
+        validate: userInput => {
+            userInput ? true : console.log('\nPlease enter a valid department name.')
+        }
+    }
+]
+
+start();
+
 /* Bonus
     - Update Employee Managers
     - View Employees By Manager
@@ -140,5 +292,3 @@ function viewAllRoles() {
     - Delete Departments, Roles, and Employees
     - View Total Utilized Budget of a Department (Combined salaries of all employees in specific department)
 */
-
-start();
