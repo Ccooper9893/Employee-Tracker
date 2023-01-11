@@ -7,25 +7,24 @@ const Department = require('./lib/department');
 const Employee = require('./lib/employee');
 const Role = require('./lib/role');
 
+//Create empty arrays to store database tables into
 let departments = [];
 let employees = [];
 let roles = [];
 let managers = [];
 
 //Connect to the MySQL database
-
 const db = mysql.createConnection(
       {
           host: 'localhost',
           user: 'root', //MySQL username
-          password: 'WhirlwindEngine9893!?', //MySQL password
+          password: '', //MySQL password
           database: 'company_db' //MySQL database name
       },
       console.log('You have connected to the company_db database.')
-  );
+);
 
-// Query company database to save tables with information to an related arrays
-
+//Query functions to grab and store tabular data from mysql database
 function queryEmployees() {
 db.promise().query('SELECT * FROM employee;')
       .then(([rows, fields]) => {
@@ -38,7 +37,8 @@ db.promise().query('SELECT * FROM employee;')
         }
       })
       .catch((err) => {console.log('There has been an query error', err)});
-    }
+}
+
 function queryRoles() {
 db.promise().query('SELECT * FROM role;')
     .then(([rows, fields]) => {
@@ -74,15 +74,13 @@ const selectionArr = [
     'Quit'
 ];
 
-//Questions for add Employee option
+//Begin inquirer prompt and display option menu for CMI (Content Management System)
 function start() {
 
     queryDepartments();
     queryEmployees();
     queryRoles();
 
-
-    //Creating empty arrays to store row objects to display in inquirer prompts
     inquirer.prompt(
         {
             type: 'list',
@@ -116,12 +114,7 @@ function start() {
     .catch((err) => {console.log('There has been an inquirer error.', err)});
 }
 
-
-
-
 /*-----------------------CLI Selection functions ---------------------------*/
-//Prompts and adds a new employee based on user input/selection
-
 function viewAllEmployees() {
     db.promise().query(
     `SELECT 
@@ -245,9 +238,9 @@ function addRole() {
     .then((data) => {
         //Grabs the department id of selected department
         let dId = departments[departments.map(e => e.name).indexOf(data.desDep)].id;
-        
+
         db.promise().query(`INSERT INTO role (title, salary, department_id) VALUES (?, ?, ?)`, [data.newRole, data.newSal, dId])
-            .then(data => console.log('Role has been added.'))
+            .then(() => console.log('Role has been added.'))
             .catch(err => console.log('There has been an query error', err))
                 
         start();
@@ -391,12 +384,18 @@ const updateManagerQ = [
             }
     }
 ];
+
 start();
 
 /* Bonus
-    - Update Employee Managers
     - View Employees By Manager
+        //Inquirer prompt for selection of manager list: for (man of managers) id = man.id
+        //Use that manager's id to select all from employees where manager_id = ? for (emp of employees) manager_id = man.id
+        //Display list of employees that satisfies manager_id = ^ console.table(array of employee objects)
     - View Employees By Department
+        //Inquirer prompt for selection of departments list: for (dep of deps) from collection of dep objects
+        //Find and use department id to select all from employees where employee.department_id = ?
+        //Display list of 
     - Delete Departments, Roles, and Employees
     - View Total Utilized Budget of a Department (Combined salaries of all employees in specific department)
 */
