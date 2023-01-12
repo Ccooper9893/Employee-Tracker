@@ -1,6 +1,7 @@
 const mysql = require('mysql2'); //Imports mysql2 library so we can interact with the mySQL databases;
 const inquirer = require('inquirer'); //Imports inquirer library so we can use CLI
 const cTable = require('console.table');// Use console.table similiar to console.log. Makes it beautiful!
+require('dotenv').config();//r
 
 //Importing classes for role, department, and employee
 const Department = require('./lib/department');
@@ -12,15 +13,16 @@ let departments;
 let employees;
 let roles;
 let managers;
+
 //Connect to the MySQL database
 const db = mysql.createConnection(
       {
           host: 'localhost',
-          user: 'root', //MySQL username
-          password: '', //MySQL password
-          database: 'company_db' //MySQL database name
+          user: process.env.DB_USER, //MySQL username from .env file
+          password: process.env.DB_PASSWORD, //MySQL password from .env file
+          database: process.env.DB_NAME //MySQL database name from .env file
       },
-      console.log('You have connected to the company_db database.')
+      console.log('\x1b[33m%s\x1b[0m','You have connected to the company_db database.')
 );
 
 //Query functions to grab and store tabular data from mysql database
@@ -43,13 +45,13 @@ function queryEmployees() {
         .then(([rows, fields]) => {
             for (row of rows) {
                 let newEmployee = new Employee(row.id, row.first_name, row.last_name, row.title, row.department, row.salary, row.manager);
-                employees.push(newEmployee)
-                if (row.manager == null) {
-                        managers.push(newEmp)
-                    }
-            }
+                employees.push(newEmployee);
+                if (row.manager_id == null) {
+                    managers.push(newEmployee);
+                };
+            };
         })
-        .catch((err) => {console.log('There has been an query error', err)})
+        .catch(err => console.log('\033[31m','There has been an query error', err));
     //   .then(([rows, fields]) => {
     //     for (emp of rows) {
     //         let newEmp = new Employee(emp.id, emp.first_name, emp.last_name, emp.role_id, emp.manager_id)
@@ -67,11 +69,11 @@ function queryRoles() {
 db.promise().query('SELECT * FROM role;')
     .then(([rows, fields]) => {
         for (role of rows) {
-            let newRole = new Role(role.id, role.title, role.salary, role.department_id)
-            roles.push(newRole)
+            let newRole = new Role(role.id, role.title, role.salary, role.department_id);
+            roles.push(newRole);
         }
     })
-    .catch((err) => {console.log('There has been an query error', err)});    
+    .catch(err => console.log('\033[31m','There has been an query error', err));    
 };
 
 function queryDepartments() {
@@ -79,11 +81,11 @@ function queryDepartments() {
 db.promise().query('SELECT * FROM department;')
     .then(([rows, fields]) => {
         for (dep of rows) {
-            let newDep = new Department(dep.id, dep.name)
-            departments.push(newDep)
-        }
+            let newDep = new Department(dep.id, dep.name);
+            departments.push(newDep);
+        };
     })
-    .catch((err) => {console.log('There has been an query error', err)});
+    .catch(err => console.log('\033[31m','There has been an query error', err));
 };
 
 // Array of CMS options
@@ -99,6 +101,7 @@ const selectionArr = [
     'Add Role', 
     'View All Departments', 
     'Add Department',
+    'View Budget',
     'Quit'
 ];
 
@@ -118,7 +121,7 @@ function start() {
     )
     .then((data) => {
         switch(data.input) {
-            case 'View All Employees': console.table(employees)
+            case 'View All Employees': viewAllEmployees(); 
             break;
             case 'Add Employee': addEmployee();
             break;
@@ -140,42 +143,28 @@ function start() {
             break;
             case 'Delete Employee': deleteEmployees();
             break;
+            case 'View Budget': showTotalBudget();
+            break;
             case 'Quit': db.end();
             break;
-        }
+        };
     })
-    .catch((err) => {console.log('There has been an inquirer error.', err)});
+    .catch(err => console.log('\033[31m','There has been an inquirer error.', err));
 };
 
 /*-----------------------CLI Selection functions ---------------------------*/
-// function viewAllEmployees() {
-//     db.promise().query(
-//     `SELECT 
-//         e1.id, 
-//         e1.first_name, 
-//         e1.last_name,
-//         role.title,
-//         department.name AS department,
-//         role.salary,
-//         e2.first_name AS manager
-//     FROM employee AS e1
-//     LEFT JOIN role ON e1.role_id = role.id
-//     LEFT JOIN employee AS e2 ON e1.manager_id = e2.id
-//     LEFT JOIN department ON role.department_id = department.id;`)
-//     .then(([rows, fields]) => {
-//         console.table(rows)
-//         start()
-//     })
-//     .catch((err) => {console.log('There has been an query error', err)})
-// };
+function viewAllEmployees() {
+  console.table(employees);
+  start();
+};
 
 function viewAllDepartments() {
     db.promise().query('SELECT * FROM department')
     .then(([rows, fields]) => {
-        console.table(rows)
-        start()
+        console.table(rows);
+        start();
     })
-    .catch((err) => {console.log('There has been an query error', err)})
+    .catch(err => console.log('\033[31m','There has been an query error', err));
 };
 
 function viewAllRoles() {
@@ -188,10 +177,10 @@ function viewAllRoles() {
     FROM role
     LEFT JOIN department ON role.department_id = department.id;`)
     .then(([rows, fields]) => {
-        console.table(rows)
-        start()
+        console.table(rows);
+        start();
     })
-    .catch((err) => {console.log('There has been an query error', err)})
+    .catch(err => console.log('\033[31m','There has been an query error', err));
 };
 
 function addEmployee() {
@@ -201,7 +190,7 @@ function addEmployee() {
         let mId;
         //Grabs the manager id of the selected manager
         if (data.empManager == 'None') {
-            mId = null
+            mId = null;
         } else {
             mId = employees[employees.map(e => e.first_name).indexOf(data.empManager)].id;
         }
@@ -210,142 +199,157 @@ function addEmployee() {
         let rId = roles[roles.map(e => e.title).indexOf(data.empRole)].id;
         
         db.promise().query(`INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)`, [data.empFirstName, data.empLastName, rId, mId])
-        .then((data) => {
-            console.log(`\nThe employee has been added to the company database.`)
-            // let newEmp = new Employee(emp.id, emp.first_name, emp.last_name, emp.role_id, emp.manager_id)
-            // employees.push(newEmp);
-            
-            })
-        .catch(err => console.log(err));
+            .catch(err => console.log('\033[31m','There has been an query error', err));
         // db.promise().query(`SELECT id FROM employee WHERE first_name = ?`, [data.empFirstName])
         // .then(([rows, fields]) => {
         //     let newEmp = new Employee(rows.id, data.empFirstName, data.empLastName, rId, mId)
         //     employees.push(newEmp);
         // })
-        start()
+        console.log('\x1b[33m%s\x1b[0m',`The employee has been added to the company database.`);
+        start();
     })
-    .catch((err) => {console.log('There has been an query error', err)})
+    .catch(err => console.log('\033[31m','There has been an query error', err));
 };
 
 function updateEmployee() {
     inquirer.prompt(updateRoleQ)
     .then(data => {
-        let rId = roles[roles.map(index => index.title).indexOf(data.roleChoice)].id
-        let empIndex = employees.map(index => index.first_name).indexOf(data.empChoice);
-        employees[empIndex].role_id = rId;
+
+        //Mapping through roles to find role ids that equal user choice
+        let rId = roles[roles.map(index => index.title).indexOf(data.roleChoice)].id;
+
         db.promise().query(`UPDATE employee SET role_id = ? WHERE first_name = ?`, [rId, data.empChoice])
-        .then(data => console.log(`\nRole has been updated.`))
-        .catch(err => console.log(err))
-        start()
+        // .then(data => console.log(`Role has been updated.`))
+        .catch(err => console.log('\033[31m','There has been an query error', err));
+        console.log('\x1b[33m%s\x1b[0m',`Role has been updated.`);
+        start();
     })
-    .catch(err => console.log(err))
+    .catch(err => console.log('\033[31m','There has been an query error', err));
     
 };
 
 function addDepartment() {
     inquirer.prompt(addDepartmentQ)
     .then((data) => {
-        
-        db.promise().query(`INSERT INTO department (name) VALUES ?`, [data.newDep])
-        .then((data) => {
-            console.log('\nDepartment has been added.')
-        })
-        .catch(err => console.log('There has been an query error', err))
-
-        start()
+        db.promise().query(`INSERT INTO department (name) VALUES (?)`, [data.newDep])
+            .catch(err => console.log('\033[31m','There has been an query error', err));
+        console.log('\x1b[33m%s\x1b[0m','Department has been added.');
+        start();
     })
-    .catch(err => console.log('There has been an error!', err))
+    .catch(err => console.log('There has been an error!', err));
 };
 
 function addRole() {
     inquirer.prompt(addRoleQ)
-    .then((data) => {
+    .then((data) => { 
         //Grabs the department id of selected department
         let dId = departments[departments.map(e => e.name).indexOf(data.desDep)].id;
 
         db.promise().query(`INSERT INTO role (title, salary, department_id) VALUES (?, ?, ?)`, [data.newRole, data.newSal, dId])
-            .then(() => console.log('Role has been added.'))
-            .catch(err => console.log('There has been an query error', err))
-                
+            .catch(err => console.log('\033[31m','There has been an query error', err));
+
+        console.log('\x1b[33m%s\x1b[0m','Role has been added.');
         start();
     })
-    .catch(err => console.log('There has been an error!', err))
+    .catch(err => console.log('\033[31m','There has been an error!', err));
 };
 
 function updateManager() {
     inquirer.prompt(updateManagerQ)
     .then(data => {
 
-        //Grabs Ids for both the employee for update and manager replacing
-        let eId = employees.map(index => index.first_name).indexOf(data.emp)
-        let mId = employees[employees.map(index => index.first_name).indexOf(data.man)].id
+        //Grabs Ids for employee managers
+        let mId = employees[employees.map(index => index.first_name).indexOf(data.man)].id;
 
         db.promise().query(`UPDATE employee SET manager_id = ? WHERE first_name = ?`, [mId, data.emp])
-        .then(data => console.log('You have changed the employee\'s manager.'))
-        .catch(err => console.log('There has been an query error', err))
+            .catch(err => console.log('\033[31m','There has been an query error', err));
 
-        employees[eId].manager_id = mId;
-        start()
+        console.log('\x1b[33m%s\x1b[0m','You have changed the employee\'s manager.');
+        start();
     })  
-    .catch(err => console.log('There has been an error!', err))
+    .catch(err => console.log('\033[31m','There has been an error!', err));
 };
 
 function sortByManager() {
-    console.log(employees.length)
     inquirer.prompt(employeeByManagerQ)
     .then(data => {
-        let mId = employees[employees.map(index => index.first_name).indexOf(data.man)].id
+        // let mId = employees[employees.map(index => index.first_name).indexOf(data.man)].id;
+        let managerEmps = []
+        for (emp of employees) {
+            if (data.man === emp.manager) {
+                managerEmps.push(emp)
+            }
+        }
+        console.table(managerEmps);
+
         // db.promise().query(`SELECT id, first_name, last_name FROM employee WHERE manager_id = ?`, [mId])
-        db.promise().query(`SELECT id, first_name, last_name FROM employee WHERE manager_id = ?`, [mId])
-            .then(([rows, fields])=> {
-                console.table(rows)
-            })
-            .catch(err => console.log('There has been an query error', err))
-        start()
+        //     .then(([rows, fields])=> {
+        //         console.table(rows);
+        //     })
+        //     .catch(err => console.log('\033[31m','There has been an query error', err));
+        start();
     })
-    .catch(err => console.log('There has been an error!', err))
+    .catch(err => console.log('\033[31m','There has been an error!', err));
 };
 
-//Need help here!!! Need to query employees where id = an array of role ids
 function sortByDepartment() {
     inquirer.prompt(employeebyDepartmentQ)
     .then(data => {
-        let depId = departments[departments.map(e => e.name).indexOf(data.dep)].id;
-        let rolesArr = roles.filter(role => role.department_id === depId);
-        let roleIds = rolesArr.map(e => e.id);
-        for (role of roleIds) {
-            db.promise().query(`SELECT * FROM employee WHERE role_id = ?`, [role])
-            .then(([rows, fields]) => console.table(rows))
-            .catch(err => console.log(err))
-        }
-        start()
+        empArr = employees.filter(emp => emp.department === data.dep);
+        console.table(empArr);
+        // let depId = departments[departments.map(e => e.name).indexOf(data.dep)].id;
+        // let rolesArr = roles.filter(role => role.department_id === depId);
+        // let roleIds = rolesArr.map(e => e.id);
+        // for (role of roleIds) {
+        //     db.promise().query(`SELECT * FROM employee WHERE role_id = ?`, [role])
+        //     .then(([rows, fields]) => console.table(rows))
+        //     .catch(err => console.log(err))
+        // }
+        start();
     })
-    .catch(err => console.log('There has been an error!', err))
+    .catch(err => console.log('\033[31m','There has been an error!', err));
 };
 
 function deleteEmployees() {
     inquirer.prompt(deleteEmployeeQ)
     .then(data => {
-        eId = employees[employees.map(e => e.first_name).indexOf(data.emp)].id
+        //Grabs id of selected employee
+        eId = employees[employees.map(e => e.first_name).indexOf(data.emp)].id;
         db.promise().query(`DELETE FROM employee WHERE id = ?`, [eId])
-            .then(() => console.log('Employee deleted!'))
-            .catch(err => console.log('There has been an query error', err))
+            .catch(err => console.log('\033[31m','There has been an query error', err));
+            console.log('\x1b[33m%s\x1b[0m','Employee deleted!');
         start();
     })
-    .catch(err => console.log('There has been an error!', err))
+    .catch(err => console.log('\033[31m','There has been an error!', err));
 };
 
 function showTotalBudget() {
-    
-}
-/*----------------------Inquirer Questions-----------------------*/ 
+    inquirer.prompt(totalBudgetQ)
+    .then(data => {
+        let total = 0;
+        for (emp of employees) {
+            if (emp.department === data.dep && data.dep !== 'All Departments') {
+                let sal = parseInt(emp.salary);
+                total = total + sal;
+            } else if (data.dep === 'All Departments') {
+                let sal = parseInt(emp.salary);
+                total = total + sal;
+            }
+        }
+        console.log('\x1b[33m%s\x1b[0m',`The budget of ${data.dep} department is $${total}.`);
+        start();
+    })
+    .catch(err => console.log('\033[31m','There has been an error!', err));
+};
+
+/*-----------------------------------Inquirer Questions-----------------------------------------------*/ 
 const addEmployeeQ = [
     {
         type: 'input',
         name: 'empFirstName',
         message: 'What is the employee\'s first name?',
         validate: userInput => {
-            return userInput ? true : console.log('Please enter a valid name.')
+            return userInput ? true : console.log('\033[31m','Please enter a valid name.')
         }
     },
     {
@@ -353,7 +357,7 @@ const addEmployeeQ = [
         name: 'empLastName',
         message: 'What is the employee\'s last name?',
         validate: userInput => {
-            return userInput ? true : console.log('Please enter a valid name.')
+            return userInput ? true : console.log('\033[31m','Please enter a valid name.')
         }
     },
     {
@@ -369,13 +373,7 @@ const addEmployeeQ = [
         name: 'empManager',
         message: 'Who is the employee\'s manager?',
         choices: () => {
-            let mgs = ['None']
-            for (emp of employees) {
-                if (emp.manager_id === null) {
-                    mgs.push(emp.first_name)
-                }
-            }
-            return mgs
+            return managers.map(e => e.first_name)
         }
     }
 ];
@@ -405,7 +403,7 @@ const addDepartmentQ = [
         name: 'newDep',
         message: 'Please enter the department you would like to add.',
         vaidate: userInput => {
-            return isNaN(userInput) ? true : console.log('Please enter a valid department.')
+            return isNaN(userInput) ? true : console.log('\033[31m','Please enter a valid department.')
         }
     }
 ];
@@ -416,7 +414,7 @@ const addRoleQ = [
         name: 'newRole',
         message: 'Please enter a role you would like to add.',
         validate: userInput => {
-            return userInput ? true : console.log('Please enter a valid role!')
+            return userInput ? true : console.log('\033[31m','Please enter a valid role!')
         }
     },
     {
@@ -424,7 +422,7 @@ const addRoleQ = [
         name: 'newSal',
         message: 'Please enter the salary of this postion in dollars. Ex. 150000 for $150,000 a year.',
         validate: userInput => {
-           return !isNaN(userInput) ? true : console.log('Please enter a number. Do not include commas!')
+           return !isNaN(userInput) ? true : console.log('\033[31m','Please enter a number. Do not include commas!')
         }
     },
     {
@@ -512,6 +510,19 @@ const deleteRoleQ = [
     }
 ];
 
+const totalBudgetQ = [
+    {
+        type: 'list',
+        name: 'dep',
+        message: 'Please choose a department.',
+        choices: () => {
+            let deps = departments.map(e => e.name)
+            deps.push('All Departments')
+            return deps 
+        } 
+    }
+];
+
 start();
 
 /* Bonus
@@ -531,7 +542,6 @@ start();
         //DELETE FROM roles WHERE id = role_id
     - View Total Utilized Budget of a Department (Combined salaries of all employees in specific department)
         //Inquirer user which department they would like to see total employee salaries
-        //
 */
 
 //Needs work, Error: Cannot delete or update a parent row.
@@ -556,7 +566,7 @@ function deleteData() {
     .catch(err => console.log('There has been an error!', err))
 };
 
-//Needs work, Error: Cannot delete or update a parent row:
+//Needs work, Error: Cannot delete or update a parent row.
 function deleteDepartments() {
     inquirer.prompt(deleteDepartmentQ)
     .then(data => {
@@ -570,16 +580,16 @@ function deleteDepartments() {
     .catch(err => console.log('There has been an error!', err))
 };
 
-//Needs work, Error: Cannot delete or update a parent row:
+//Needs work, Error: Cannot delete or update a parent row.
 function deleteRoles() {
     inquirer.prompt(deleteRoleQ)
     .then(data => {
         rId = roles[roles.map(e => e.title).indexOf(data.rol)].id
         db.promise().query(`DELETE FROM role WHERE id = ?`, [rId])
-            .then(() => console.log('Role deleted!'))
-            .catch(err => console.log('There has been an query error', err))
+            .catch(err => console.log('\033[31m','There has been an query error', err))
+        console.log('Role deleted!')
         start();
     })
     
-    .catch(err => console.log('There has been an error!', err))
+    .catch(err => console.log('\033[31m','There has been an error!', err))
 };
