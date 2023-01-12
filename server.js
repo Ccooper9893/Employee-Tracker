@@ -8,11 +8,10 @@ const Employee = require('./lib/employee');
 const Role = require('./lib/role');
 
 //Create empty arrays to store database tables into
-let departments = [];
-let employees = [];
-let roles = [];
-let managers = [];
-
+let departments;
+let employees;
+let roles;
+let managers;
 //Connect to the MySQL database
 const db = mysql.createConnection(
       {
@@ -26,6 +25,8 @@ const db = mysql.createConnection(
 
 //Query functions to grab and store tabular data from mysql database
 function queryEmployees() {
+    employees = [];
+    managers = [];
 db.promise().query('SELECT * FROM employee;')
       .then(([rows, fields]) => {
         for (emp of rows) {
@@ -40,6 +41,7 @@ db.promise().query('SELECT * FROM employee;')
 }
 
 function queryRoles() {
+    roles = [];
 db.promise().query('SELECT * FROM role;')
     .then(([rows, fields]) => {
         for (role of rows) {
@@ -51,6 +53,7 @@ db.promise().query('SELECT * FROM role;')
 }
 
 function queryDepartments() {
+    departments = [];
 db.promise().query('SELECT * FROM department;')
     .then(([rows, fields]) => {
         for (dep of rows) {
@@ -66,7 +69,9 @@ const selectionArr = [
     'View All Employees', 
     'Add Employee', 
     'Update Employee Role',
-    'Update Employee Manager', 
+    'Update Employee Manager',
+    'View Employees by Manager',
+    'View Employees by Department',
     'View All Roles', 
     'Add Role', 
     'View All Departments', 
@@ -76,7 +81,6 @@ const selectionArr = [
 
 //Begin inquirer prompt and display option menu for CMI (Content Management System)
 function start() {
-
     queryDepartments();
     queryEmployees();
     queryRoles();
@@ -106,6 +110,10 @@ function start() {
             case 'Add Department': addDepartment();
             break;
             case 'Update Employee Manager': updateManager();
+            break;
+            case 'View Employees by Manager': sortByManager();
+            break;
+            case 'View Employees by Department': sortByDepartment();
             break;
             case 'Quit': db.end();
             break;
@@ -219,15 +227,6 @@ function addDepartment() {
         })
         .catch(err => console.log('There has been an query error', err))
 
-        // db.promise().query(`SELECT id FROM department WHERE name = ?`, [data.newDep])
-        //     .then((row) => {
-        //         console.log(row)
-        //         // let dep = new Department(row[0].id, data.newDep)
-        //         // departments.push(dep)
-        //     })
-        //     .catch(err => console.log('There has been an query error', err))
-
-        
         start()
     })
     .catch(err => console.log('There has been an error!', err))
@@ -263,6 +262,39 @@ function updateManager() {
         employees[eId].manager_id = mId;
         start()
     })  
+    .catch(err => console.log('There has been an error!', err))
+}
+
+function sortByManager() {
+    console.log(employees.length)
+    inquirer.prompt(employeeByManagerQ)
+    .then(data => {
+        let mId = employees[employees.map(index => index.first_name).indexOf(data.man)].id
+        // db.promise().query(`SELECT id, first_name, last_name FROM employee WHERE manager_id = ?`, [mId])
+        db.promise().query(`SELECT id, first_name, last_name FROM employee WHERE manager_id = ?`, [mId])
+            .then(([rows, fields])=> {
+                console.table(rows)
+            })
+            .catch(err => console.log('There has been an query error', err))
+        start()
+    })
+    .catch(err => console.log('There has been an error!', err))
+}
+
+//Need help here!!!
+function sortByDepartment() {
+    inquirer.prompt(employeebyDepartment)
+    .then(data => {
+        let depId = departments[departments.map(e => e.name).indexOf(data.dep)].id;
+        let rolesArr = roles.filter(role => role.department_id === depId);
+        let roleIds = rolesArr.map(e => e.id);
+        for (role of roleIds) {
+            db.promise().query(`SELECT * FROM employee WHERE role_id = ?`, [role])
+            .then(([rows, fields]) => console.table(rows))
+            .catch(err => console.log(err))
+        }
+        
+    })
     .catch(err => console.log('There has been an error!', err))
 }
 
@@ -385,6 +417,28 @@ const updateManagerQ = [
     }
 ];
 
+const employeeByManagerQ = [
+    {
+        type: 'list',
+        name: 'man',
+        message: 'Please choose a manager you would like to sort the employees by.',
+        choices: () => {
+            return managers.map(index => index.first_name)
+            }
+    }
+]
+
+const employeebyDepartment = [
+    {
+        type: 'list',
+        name: 'dep',
+        message: 'Please choose a department you would like to sort the employees by.',
+        choices: () => {
+            return departments.map(index => index.name)
+            }
+    }
+];
+
 start();
 
 /* Bonus
@@ -395,7 +449,14 @@ start();
     - View Employees By Department
         //Inquirer prompt for selection of departments list: for (dep of deps) from collection of dep objects
         //Find and use department id to select all from employees where employee.department_id = ?
-        //Display list of 
+        //Display list of of those employees
     - Delete Departments, Roles, and Employees
+        //Inquirer if user wants to delete a department, role, or employee
+        // list: for (emp of employees) list: for (dep of departments) list: for (role of roles);
+        //DELETE FROM department WHERE id = department_id
+        //DELETE FROM employees WHERE id = employee_id
+        //DELETE FROM roles WHERE id = role_id
     - View Total Utilized Budget of a Department (Combined salaries of all employees in specific department)
+        //Inquirer user which department they would like to see total employee salaries
+        //
 */
