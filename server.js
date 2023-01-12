@@ -1,7 +1,7 @@
 const mysql = require('mysql2'); //Imports mysql2 library so we can interact with the mySQL databases;
 const inquirer = require('inquirer'); //Imports inquirer library so we can use CLI
 const cTable = require('console.table');// Use console.table similiar to console.log. Makes it beautiful!
-require('dotenv').config();//r
+require('dotenv').config();//Environmental variables
 
 //Importing classes for role, department, and employee
 const Department = require('./lib/department');
@@ -14,6 +14,7 @@ let employees;
 let roles;
 let managers;
 
+/*-----------------------Application start up functions------------------------*/
 //Connect to the MySQL database
 const db = mysql.createConnection(
       {
@@ -25,7 +26,7 @@ const db = mysql.createConnection(
       console.log('\x1b[33m%s\x1b[0m','You have connected to the company_db database.')
 );
 
-//Query functions to grab and store tabular data from mysql database
+//Query functions to grab and store tabular data from mysql database at start of application
 function queryEmployees() {
     employees = [];
     managers = [];
@@ -69,8 +70,8 @@ function queryRoles() {
 db.promise().query('SELECT * FROM role;')
     .then(([rows, fields]) => {
         for (role of rows) {
-            let newRole = new Role(role.id, role.title, role.salary, role.department_id);
-            roles.push(newRole);
+            let newRole = new Role(role.id, role.title, role.salary, role.department_id); //Create new role objects
+            roles.push(newRole); //Push role object onto array
         }
     })
     .catch(err => console.log('\033[31m','There has been an query error', err));    
@@ -88,21 +89,31 @@ db.promise().query('SELECT * FROM department;')
     .catch(err => console.log('\033[31m','There has been an query error', err));
 };
 
-// Array of CMS options
-const selectionArr = [
-    'View All Employees', 
-    'Add Employee', 
-    'Update Employee Role',
-    'Update Employee Manager',
-    'View Employees by Manager',
-    'View Employees by Department',
-    'Delete Employee',
+// Array of CMS options for user selection
+const mainMenuOptions = [
+    'View Employees',
+    'Update Employees',
     'View All Roles', 
     'Add Role', 
     'View All Departments', 
     'Add Department',
     'View Budget',
     'Quit'
+];
+
+const employeeMenuOptions = [
+    'Add Employee', 
+    'Update Employee Role',
+    'Update Employee Manager',
+    'Delete Employee',
+    'Back'
+];
+
+const viewEmployeeOptions = [
+    'View All Employees',
+    'View Employees by Manager',
+    'View Employees by Department',
+    'Back'
 ];
 
 //Begin inquirer prompt and display option menu for CMI (Content Management System)
@@ -116,16 +127,14 @@ function start() {
             type: 'list',
             name: 'input',
             message: 'What would you like to do?',
-            choices: selectionArr
+            choices: mainMenuOptions
         }
     )
     .then((data) => {
         switch(data.input) {
-            case 'View All Employees': viewAllEmployees(); 
+            case 'View Employees': viewOptions(); 
             break;
-            case 'Add Employee': addEmployee();
-            break;
-            case 'Update Employee Role': updateEmployee();
+            case 'Update Employees': employeeOptions();
             break;
             case 'View All Roles': viewAllRoles();
             break;
@@ -134,14 +143,6 @@ function start() {
             case 'View All Departments': viewAllDepartments();
             break;
             case 'Add Department': addDepartment();
-            break;
-            case 'Update Employee Manager': updateManager();
-            break;
-            case 'View Employees by Manager': sortByManager();
-            break;
-            case 'View Employees by Department': sortByDepartment();
-            break;
-            case 'Delete Employee': deleteEmployees();
             break;
             case 'View Budget': showTotalBudget();
             break;
@@ -152,7 +153,57 @@ function start() {
     .catch(err => console.log('\033[31m','There has been an inquirer error.', err));
 };
 
+function employeeOptions() {
+    inquirer.prompt(
+        {
+            type: 'list',
+            name: 'selection',
+            message: 'Choose an option',
+            choices: employeeMenuOptions
+        }
+    )
+    .then(data => {
+        switch(data.selection) {
+            case 'Add Employee': addEmployee();
+            break;
+            case 'Update Employee Role': updateEmployee();
+            break;
+            case 'Update Employee Manager': updateManager();
+            break;
+            case 'Delete Employee': deleteEmployees();
+            break;
+            case 'Back' : start();
+        }
+    })
+    .catch(err => console.log('\033[31m','There has been an error!', err));
+};
+
+function viewOptions() {
+    inquirer.prompt(
+        {
+            type: 'list',
+            name: 'selection',
+            message: 'Choose an option',
+            choices: viewEmployeeOptions
+        }
+    )
+    .then(data => {
+        switch(data.selection) {
+            case 'View All Employees': viewAllEmployees();
+            break;
+            case 'View Employees by Manager': sortByManager();
+            break;
+            case 'View Employees by Department': sortByDepartment();
+            break;
+            case 'Back': start();
+        }
+    })
+    .catch(err => console.log('\033[31m','There has been an query error', err));
+}
+
+start();
 /*-----------------------CLI Selection functions ---------------------------*/
+
 function viewAllEmployees() {
   console.table(employees);
   start();
@@ -342,7 +393,8 @@ function showTotalBudget() {
     .catch(err => console.log('\033[31m','There has been an error!', err));
 };
 
-/*-----------------------------------Inquirer Questions-----------------------------------------------*/ 
+/*-----------------------------------Inquirer Questions-----------------------------------------------*/
+
 const addEmployeeQ = [
     {
         type: 'input',
@@ -373,7 +425,9 @@ const addEmployeeQ = [
         name: 'empManager',
         message: 'Who is the employee\'s manager?',
         choices: () => {
-            return managers.map(e => e.first_name)
+            manArr = managers.map(e => e.first_name);
+            manArr.push('None');
+            return manArr
         }
     }
 ];
@@ -522,8 +576,6 @@ const totalBudgetQ = [
         } 
     }
 ];
-
-start();
 
 /* Bonus
     - View Employees By Manager
