@@ -27,18 +27,40 @@ const db = mysql.createConnection(
 function queryEmployees() {
     employees = [];
     managers = [];
-db.promise().query('SELECT * FROM employee;')
-      .then(([rows, fields]) => {
-        for (emp of rows) {
-            let newEmp = new Employee(emp.id, emp.first_name, emp.last_name, emp.role_id, emp.manager_id)
-            employees.push(newEmp);
-            if (emp.manager_id == null) {
-                managers.push(newEmp)
+    db.promise().query(
+        `SELECT 
+            e1.id, 
+            e1.first_name, 
+            e1.last_name,
+            role.title,
+            department.name AS department,
+            role.salary,
+            e2.first_name AS manager
+        FROM employee AS e1
+        LEFT JOIN role ON e1.role_id = role.id
+        LEFT JOIN employee AS e2 ON e1.manager_id = e2.id
+        LEFT JOIN department ON role.department_id = department.id;`)
+        .then(([rows, fields]) => {
+            for (row of rows) {
+                let newEmployee = new Employee(row.id, row.first_name, row.last_name, row.title, row.department, row.salary, row.manager);
+                employees.push(newEmployee)
+                if (row.manager == null) {
+                        managers.push(newEmp)
+                    }
             }
-        }
-      })
-      .catch((err) => {console.log('There has been an query error', err)});
-}
+        })
+        .catch((err) => {console.log('There has been an query error', err)})
+    //   .then(([rows, fields]) => {
+    //     for (emp of rows) {
+    //         let newEmp = new Employee(emp.id, emp.first_name, emp.last_name, emp.role_id, emp.manager_id)
+    //         employees.push(newEmp);
+    //         if (emp.manager_id == null) {
+    //             managers.push(newEmp)
+    //         }
+    //     }
+    //   })
+    //   .catch((err) => {console.log('There has been an query error', err)});
+};
 
 function queryRoles() {
     roles = [];
@@ -50,7 +72,7 @@ db.promise().query('SELECT * FROM role;')
         }
     })
     .catch((err) => {console.log('There has been an query error', err)});    
-}
+};
 
 function queryDepartments() {
     departments = [];
@@ -62,7 +84,7 @@ db.promise().query('SELECT * FROM department;')
         }
     })
     .catch((err) => {console.log('There has been an query error', err)});
-}
+};
 
 // Array of CMS options
 const selectionArr = [
@@ -72,6 +94,7 @@ const selectionArr = [
     'Update Employee Manager',
     'View Employees by Manager',
     'View Employees by Department',
+    'Delete Employee',
     'View All Roles', 
     'Add Role', 
     'View All Departments', 
@@ -95,7 +118,7 @@ function start() {
     )
     .then((data) => {
         switch(data.input) {
-            case 'View All Employees': viewAllEmployees();
+            case 'View All Employees': console.table(employees)
             break;
             case 'Add Employee': addEmployee();
             break;
@@ -115,34 +138,36 @@ function start() {
             break;
             case 'View Employees by Department': sortByDepartment();
             break;
+            case 'Delete Employee': deleteEmployees();
+            break;
             case 'Quit': db.end();
             break;
         }
     })
     .catch((err) => {console.log('There has been an inquirer error.', err)});
-}
+};
 
 /*-----------------------CLI Selection functions ---------------------------*/
-function viewAllEmployees() {
-    db.promise().query(
-    `SELECT 
-        e1.id, 
-        e1.first_name, 
-        e1.last_name,
-        role.title,
-        department.name AS department,
-        role.salary,
-        e2.first_name AS manager
-    FROM employee AS e1
-    LEFT JOIN role ON e1.role_id = role.id
-    LEFT JOIN employee AS e2 ON e1.manager_id = e2.id
-    LEFT JOIN department ON role.department_id = department.id;`)
-    .then(([rows, fields]) => {
-        console.table(rows)
-        start()
-    })
-    .catch((err) => {console.log('There has been an query error', err)})
-};
+// function viewAllEmployees() {
+//     db.promise().query(
+//     `SELECT 
+//         e1.id, 
+//         e1.first_name, 
+//         e1.last_name,
+//         role.title,
+//         department.name AS department,
+//         role.salary,
+//         e2.first_name AS manager
+//     FROM employee AS e1
+//     LEFT JOIN role ON e1.role_id = role.id
+//     LEFT JOIN employee AS e2 ON e1.manager_id = e2.id
+//     LEFT JOIN department ON role.department_id = department.id;`)
+//     .then(([rows, fields]) => {
+//         console.table(rows)
+//         start()
+//     })
+//     .catch((err) => {console.log('There has been an query error', err)})
+// };
 
 function viewAllDepartments() {
     db.promise().query('SELECT * FROM department')
@@ -167,7 +192,7 @@ function viewAllRoles() {
         start()
     })
     .catch((err) => {console.log('There has been an query error', err)})
-}
+};
 
 function addEmployee() {
     inquirer.prompt(addEmployeeQ)
@@ -221,7 +246,7 @@ function addDepartment() {
     inquirer.prompt(addDepartmentQ)
     .then((data) => {
         
-        db.promise().query(`INSERT INTO department (name) VALUES (?)`, [data.newDep])
+        db.promise().query(`INSERT INTO department (name) VALUES ?`, [data.newDep])
         .then((data) => {
             console.log('\nDepartment has been added.')
         })
@@ -230,7 +255,7 @@ function addDepartment() {
         start()
     })
     .catch(err => console.log('There has been an error!', err))
-}
+};
 
 function addRole() {
     inquirer.prompt(addRoleQ)
@@ -245,7 +270,7 @@ function addRole() {
         start();
     })
     .catch(err => console.log('There has been an error!', err))
-}
+};
 
 function updateManager() {
     inquirer.prompt(updateManagerQ)
@@ -263,7 +288,7 @@ function updateManager() {
         start()
     })  
     .catch(err => console.log('There has been an error!', err))
-}
+};
 
 function sortByManager() {
     console.log(employees.length)
@@ -279,11 +304,11 @@ function sortByManager() {
         start()
     })
     .catch(err => console.log('There has been an error!', err))
-}
+};
 
-//Need help here!!!
+//Need help here!!! Need to query employees where id = an array of role ids
 function sortByDepartment() {
-    inquirer.prompt(employeebyDepartment)
+    inquirer.prompt(employeebyDepartmentQ)
     .then(data => {
         let depId = departments[departments.map(e => e.name).indexOf(data.dep)].id;
         let rolesArr = roles.filter(role => role.department_id === depId);
@@ -293,11 +318,26 @@ function sortByDepartment() {
             .then(([rows, fields]) => console.table(rows))
             .catch(err => console.log(err))
         }
-        
+        start()
     })
     .catch(err => console.log('There has been an error!', err))
-}
+};
 
+function deleteEmployees() {
+    inquirer.prompt(deleteEmployeeQ)
+    .then(data => {
+        eId = employees[employees.map(e => e.first_name).indexOf(data.emp)].id
+        db.promise().query(`DELETE FROM employee WHERE id = ?`, [eId])
+            .then(() => console.log('Employee deleted!'))
+            .catch(err => console.log('There has been an query error', err))
+        start();
+    })
+    .catch(err => console.log('There has been an error!', err))
+};
+
+function showTotalBudget() {
+    
+}
 /*----------------------Inquirer Questions-----------------------*/ 
 const addEmployeeQ = [
     {
@@ -357,7 +397,7 @@ const updateRoleQ = [
             return roles.map(index => index.title);
         }
     }
-]
+];
 
 const addDepartmentQ = [
     {
@@ -368,7 +408,7 @@ const addDepartmentQ = [
             return isNaN(userInput) ? true : console.log('Please enter a valid department.')
         }
     }
-]
+];
 
 const addRoleQ = [
     {
@@ -426,9 +466,9 @@ const employeeByManagerQ = [
             return managers.map(index => index.first_name)
             }
     }
-]
+];
 
-const employeebyDepartment = [
+const employeebyDepartmentQ = [
     {
         type: 'list',
         name: 'dep',
@@ -436,6 +476,39 @@ const employeebyDepartment = [
         choices: () => {
             return departments.map(index => index.name)
             }
+    }
+];
+
+const deleteEmployeeQ = [
+    {
+        type: 'list',
+        name: 'emp',
+        message: 'Which employee would you like to delete?',
+        choices: () => {
+            return employees.map(e => (e.last_name, e.first_name))
+        }
+    }
+];
+
+const deleteDepartmentQ = [
+    {
+        type: 'list',
+        name: 'dep',
+        message: 'Which employee would you like to delete?',
+        choices: () => {
+            return departments.map(e => e.name)
+        }
+    }
+];
+
+const deleteRoleQ = [
+    {
+        type: 'list',
+        name: 'rol',
+        message: 'Which role would you like to delete?',
+        choices: () => {
+            return roles.map(e => e.title)
+        }
     }
 ];
 
@@ -460,3 +533,53 @@ start();
         //Inquirer user which department they would like to see total employee salaries
         //
 */
+
+//Needs work, Error: Cannot delete or update a parent row.
+function deleteData() {
+    inquirer.prompt(
+        {
+            type: 'list',
+            name: 'choice',
+            message: 'Which category would you like to delete from?',
+            choices: ['Departments', 'Roles', 'Employees']
+        }
+    ).then(data => {
+        switch(data.choice) {
+            case 'Departments': deleteDepartments();
+            break;
+            case 'Roles' : deleteRoles();
+            break;
+            case 'Employees' : deleteEmployees();
+            break;
+        }
+    })
+    .catch(err => console.log('There has been an error!', err))
+};
+
+//Needs work, Error: Cannot delete or update a parent row:
+function deleteDepartments() {
+    inquirer.prompt(deleteDepartmentQ)
+    .then(data => {
+        dId = departments[departments.map(e => e.name).indexOf(data.dep)].id
+        console.log(dId)
+        db.promise().query(`SET FOREIGN_KEY_CHECKS=0; DELETE FROM department WHERE id = ?; SET FOREIGN_KEY_CHECKS=1;`, [dId])
+            .then(() => console.log('Department deleted!'))
+            .catch(err => console.log('There has been an query error', err))
+        start();
+    })
+    .catch(err => console.log('There has been an error!', err))
+};
+
+//Needs work, Error: Cannot delete or update a parent row:
+function deleteRoles() {
+    inquirer.prompt(deleteRoleQ)
+    .then(data => {
+        rId = roles[roles.map(e => e.title).indexOf(data.rol)].id
+        db.promise().query(`DELETE FROM role WHERE id = ?`, [rId])
+            .then(() => console.log('Role deleted!'))
+            .catch(err => console.log('There has been an query error', err))
+        start();
+    })
+    
+    .catch(err => console.log('There has been an error!', err))
+};
