@@ -15,23 +15,21 @@ A command line application Content Management System (CMS) using Javascript, Nod
     - Delete Employees (Bonus)
 - View all Roles
     - Add Role
+    - Delete Role (Bonus)
 - View all Departments
     - Add Department
+    - Delete Department (Bonus)
 - View Budget (Bonus)
-
-Upcoming feature updates:
-- Delete Role
-- Delete Department
-- Update Role salary, title, and department
 
 ## *Table of Contents*
  ___
   - [Installation](#installation)
   - [Usage](#usage)
   - [Software](#software)
+  - [Resources](#resources)
   - [License](#license)
   - [Questions](#questions)
-  - [Resources](#resources)
+
 
 ## *Installation*
 ___

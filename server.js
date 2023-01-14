@@ -1,6 +1,6 @@
 const mysql = require('mysql2'); //Imports mysql2 library so we can interact with the mySQL databases;
 const inquirer = require('inquirer'); //Imports inquirer library so we can use CLI
-const cTable = require('console.table');// Use console.table similiar to console.log. Makes it beautiful!
+require('console.table');// Use console.table similiar to console.log. Makes it beautiful!
 require('dotenv').config();//Environmental variables
 
 //Importing classes for role, department, and employee
@@ -98,6 +98,7 @@ const mainMenuOptions = [
     'View All Departments', 
     'Add Department',
     'View Budget',
+    'Delete',
     'Quit'
 ];
 
@@ -105,7 +106,6 @@ const employeeMenuOptions = [
     'Add Employee', 
     'Update Employee Role',
     'Update Employee Manager',
-    'Delete Employee',
     'Back'
 ];
 
@@ -146,6 +146,8 @@ function start() {
             break;
             case 'View Budget': showTotalBudget();
             break;
+            case 'Delete' : deleteData();
+            break;
             case 'Quit': db.end();
             break;
         };
@@ -170,9 +172,8 @@ function employeeOptions() {
             break;
             case 'Update Employee Manager': updateManager();
             break;
-            case 'Delete Employee': deleteEmployees();
-            break;
             case 'Back' : start();
+            break;
         }
     })
     .catch(err => console.log('\033[31m','There has been an error!', err));
@@ -196,13 +197,14 @@ function viewOptions() {
             case 'View Employees by Department': sortByDepartment();
             break;
             case 'Back': start();
+            break;
         }
     })
     .catch(err => console.log('\033[31m','There has been an query error', err));
 }
 
 start();
-/*-----------------------CLI Selection functions ---------------------------*/
+/*-----------------------CLI Selection/mysql2 functions ---------------------------*/
 
 function viewAllEmployees() {
   console.table(employees);
@@ -287,7 +289,7 @@ function addDepartment() {
         console.log('\x1b[33m%s\x1b[0m','Department has been added.');
         start();
     })
-    .catch(err => console.log('There has been an error!', err));
+    .catch(err => console.log('\033[31m','There has been an error!', err));
 };
 
 function addRole() {
@@ -361,19 +363,6 @@ function sortByDepartment() {
     .catch(err => console.log('\033[31m','There has been an error!', err));
 };
 
-function deleteEmployees() {
-    inquirer.prompt(deleteEmployeeQ)
-    .then(data => {
-        //Grabs id of selected employee
-        eId = employees[employees.map(e => e.first_name).indexOf(data.emp)].id;
-        db.promise().query(`DELETE FROM employee WHERE id = ?`, [eId])
-            .catch(err => console.log('\033[31m','There has been an query error', err));
-            console.log('\x1b[33m%s\x1b[0m','Employee deleted!');
-        start();
-    })
-    .catch(err => console.log('\033[31m','There has been an error!', err));
-};
-
 function showTotalBudget() {
     inquirer.prompt(totalBudgetQ)
     .then(data => {
@@ -391,6 +380,69 @@ function showTotalBudget() {
         start();
     })
     .catch(err => console.log('\033[31m','There has been an error!', err));
+};
+
+function deleteData() {
+    inquirer.prompt(
+        {
+            type: 'list',
+            name: 'choice',
+            message: 'Which category would you like to delete from?',
+            choices: ['Departments', 'Roles', 'Employees', 'Back']
+        }
+    ).then(data => {
+        switch(data.choice) {
+            case 'Departments': deleteDepartments();
+            break;
+            case 'Roles' : deleteRoles();
+            break;
+            case 'Employees' : deleteEmployees();
+            break;
+            case 'Back' : start();
+            break;
+        }
+    })
+    .catch(err => console.log('\033[31m','There has been an error!', err))
+};
+
+function deleteEmployees() {
+    inquirer.prompt(deleteEmployeeQ)
+    .then(data => {
+        //Grabs id of selected employee
+        eId = employees[employees.map(e => e.first_name).indexOf(data.emp)].id;
+        db.promise().query(`DELETE FROM employee WHERE id = ?`, [eId])
+            .catch(err => console.log('\033[31m','There has been an query error', err));
+            console.log('\x1b[33m%s\x1b[0m','Employee deleted!');
+        start();
+    })
+    .catch(err => console.log('\033[31m','There has been an error!', err));
+};
+
+function deleteDepartments() {
+    inquirer.prompt(deleteDepartmentQ)
+    .then(data => {
+
+        dId = departments[departments.map(e => e.name).indexOf(data.dep)].id
+        db.promise().query(`DELETE FROM department WHERE id = ?`, [dId])
+            .catch(err => console.log('\033[31m','There has been an query error', err))
+
+        console.log('\x1b[33m%s\x1b[0m','Department deleted!')
+        start();
+    })
+    .catch(err => console.log('\033[31m','There has been an error!', err))
+};
+
+function deleteRoles() {
+    inquirer.prompt(deleteRoleQ)
+    .then(data => {
+        rId = roles[roles.map(e => e.title).indexOf(data.rol)].id
+        db.promise().query(`DELETE FROM role WHERE id = ?`, [rId])
+            .catch(err => console.log('\033[31m','There has been an query error', err))
+        console.log('\x1b[33m%s\x1b[0m','Role deleted!')
+        start();
+    })
+    
+    .catch(err => console.log('\033[31m','There has been an error!', err))
 };
 
 /*-----------------------------------Inquirer Questions-----------------------------------------------*/
@@ -438,7 +490,8 @@ const updateRoleQ = [
     name: 'empChoice',
     message: 'Which employee would you like to update?',
     choices: () => {
-        return employees.map(index => index.first_name); 
+        // return employees.map(index => index.first_name);
+        return employees.map(e => e.first_name);
         }
     },
     {
@@ -446,7 +499,8 @@ const updateRoleQ = [
         name: 'roleChoice',
         message: 'What is the employee\'s new role?',
         choices: () => {
-            return roles.map(index => index.title);
+            return roles.map(e => e.title);
+
         }
     }
 ];
@@ -577,71 +631,4 @@ const totalBudgetQ = [
     }
 ];
 
-/* Bonus
-    - View Employees By Manager
-        //Inquirer prompt for selection of manager list: for (man of managers) id = man.id
-        //Use that manager's id to select all from employees where manager_id = ? for (emp of employees) manager_id = man.id
-        //Display list of employees that satisfies manager_id = ^ console.table(array of employee objects)
-    - View Employees By Department
-        //Inquirer prompt for selection of departments list: for (dep of deps) from collection of dep objects
-        //Find and use department id to select all from employees where employee.department_id = ?
-        //Display list of of those employees
-    - Delete Departments, Roles, and Employees
-        //Inquirer if user wants to delete a department, role, or employee
-        // list: for (emp of employees) list: for (dep of departments) list: for (role of roles);
-        //DELETE FROM department WHERE id = department_id
-        //DELETE FROM employees WHERE id = employee_id
-        //DELETE FROM roles WHERE id = role_id
-    - View Total Utilized Budget of a Department (Combined salaries of all employees in specific department)
-        //Inquirer user which department they would like to see total employee salaries
-*/
 
-//Needs work, Error: Cannot delete or update a parent row.
-function deleteData() {
-    inquirer.prompt(
-        {
-            type: 'list',
-            name: 'choice',
-            message: 'Which category would you like to delete from?',
-            choices: ['Departments', 'Roles', 'Employees']
-        }
-    ).then(data => {
-        switch(data.choice) {
-            case 'Departments': deleteDepartments();
-            break;
-            case 'Roles' : deleteRoles();
-            break;
-            case 'Employees' : deleteEmployees();
-            break;
-        }
-    })
-    .catch(err => console.log('There has been an error!', err))
-};
-
-//Needs work, Error: Cannot delete or update a parent row.
-function deleteDepartments() {
-    inquirer.prompt(deleteDepartmentQ)
-    .then(data => {
-        dId = departments[departments.map(e => e.name).indexOf(data.dep)].id
-        console.log(dId)
-        db.promise().query(`SET FOREIGN_KEY_CHECKS=0; DELETE FROM department WHERE id = ?; SET FOREIGN_KEY_CHECKS=1;`, [dId])
-            .then(() => console.log('Department deleted!'))
-            .catch(err => console.log('There has been an query error', err))
-        start();
-    })
-    .catch(err => console.log('There has been an error!', err))
-};
-
-//Needs work, Error: Cannot delete or update a parent row.
-function deleteRoles() {
-    inquirer.prompt(deleteRoleQ)
-    .then(data => {
-        rId = roles[roles.map(e => e.title).indexOf(data.rol)].id
-        db.promise().query(`DELETE FROM role WHERE id = ?`, [rId])
-            .catch(err => console.log('\033[31m','There has been an query error', err))
-        console.log('Role deleted!')
-        start();
-    })
-    
-    .catch(err => console.log('\033[31m','There has been an error!', err))
-};
